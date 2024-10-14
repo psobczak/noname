@@ -1,9 +1,11 @@
 mod animation;
+mod assets;
 mod common;
 mod enemy;
 mod player;
 
 use animation::AnimationPlugin;
+use assets::GameAssetsPlugin;
 use bevy::{input::common_conditions::input_toggle_active, prelude::*};
 use bevy_asset_loader::loading_state::{LoadingState, LoadingStateAppExt};
 use enemy::EnemyPlugin;
@@ -30,7 +32,7 @@ fn main() {
         .add_loading_state(
             LoadingState::new(MyStates::AssetLoading).continue_to_state(MyStates::Next),
         )
-        .add_plugins((PlayerPlugin, EnemyPlugin, AnimationPlugin))
+        .add_plugins((PlayerPlugin, EnemyPlugin, AnimationPlugin, GameAssetsPlugin))
         .add_plugins(
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Slash)),
         )

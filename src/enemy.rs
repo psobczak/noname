@@ -5,6 +5,8 @@ use rand::{
 };
 
 use crate::{
+    animation::AnimationTimer,
+    assets::{Entities, EntitiesHandle},
     common::{Health, Speed},
     player::Player,
     MyStates,
@@ -17,9 +19,14 @@ impl Plugin for EnemyPlugin {
         app.insert_resource(SpawnTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
             .add_systems(
                 Update,
-                (move_towards_player, spawn_enemy).distributive_run_if(
-                    in_state(MyStates::Next).and_then(any_with_component::<Player>),
-                ),
+                (
+                    move_towards_player,
+                    spawn_halfling,
+                    compare_x_pos_with_player,
+                )
+                    .distributive_run_if(
+                        in_state(MyStates::Next).and_then(any_with_component::<Player>),
+                    ),
             );
     }
 }
@@ -69,12 +76,48 @@ impl Distribution<SpawnDirection> for Standard {
     }
 }
 
-fn spawn_enemy(
+#[derive(Event)]
+enum SpriteDirection {
+    Left,
+    Right,
+}
+
+fn compare_x_pos_with_player(
     mut commands: Commands,
+    player: Query<&GlobalTransform, With<Player>>,
+    enemies: Query<(&GlobalTransform, Entity), With<Enemy>>,
+) {
+    let player = player.single();
+    for (enemy, entity) in &enemies {
+        if enemy.translation().x < player.translation().x {
+            commands.trigger_targets(SpriteDirection::Right, entity)
+        } else {
+            commands.trigger_targets(SpriteDirection::Left, entity)
+        }
+    }
+}
+
+fn on_direction_changed(
+    trigger: Trigger<SpriteDirection>,
+    mut sprites: Query<&mut Sprite, With<Enemy>>,
+) {
+    let mut sprite = sprites.get_mut(trigger.entity()).unwrap();
+    match trigger.event() {
+        SpriteDirection::Left => sprite.flip_x = true,
+        SpriteDirection::Right => sprite.flip_x = false,
+    }
+}
+
+fn spawn_halfling(
     window: Query<&Window, With<PrimaryWindow>>,
     player: Query<&GlobalTransform, With<Player>>,
     mut timer: ResMut<SpawnTimer>,
     time: Res<Time>,
+    mut commands: Commands,
+    assets_handle: Res<EntitiesHandle>,
+    assets: ResMut<Assets<Entities>>,
+    asset_server: Res<AssetServer>,
+    mut atlases: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     timer.0.tick(time.delta());
 
@@ -100,20 +143,36 @@ fn spawn_enemy(
             _ => unreachable!("This should never happen"),
         };
 
-        commands.spawn((
-            Enemy,
-            Speed(50.0),
-            Health(30),
-            SpriteBundle {
-                sprite: Sprite {
-                    color: bevy::color::palettes::tailwind::RED_600.into(),
-                    custom_size: Some(Vec2::splat(20.0)),
-                    ..Default::default()
-                },
-                transform: Transform::from_translation(spawn_point.extend(0.0)),
-                ..Default::default()
-            },
-        ));
+        if let Some(entities) = assets.get(assets_handle.entities.id()) {
+            let halfling = entities.get_entity("halfling").unwrap();
+            info!("{halfling:?}");
+            let sprite_sheet = halfling.sprite_sheet.clone().unwrap();
+
+            let atlas = TextureAtlasLayout::from_grid(
+                UVec2::new(sprite_sheet.tile_size_x, sprite_sheet.tile_size_y),
+                sprite_sheet.columns,
+                sprite_sheet.rows,
+                None,
+                None,
+            );
+
+            let atlas_handle = atlases.add(atlas);
+
+            commands
+                .spawn((
+                    Enemy,
+                    Speed(50.0),
+                    Health(30),
+                    SpriteBundle {
+                        texture: asset_server.load(halfling.sprite.clone()),
+                        transform: Transform::from_translation(spawn_point.extend(0.0)),
+                        ..Default::default()
+                    },
+                    TextureAtlas::from(atlas_handle),
+                    AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
+                ))
+                .observe(on_direction_changed);
+        }
     }
 }
 

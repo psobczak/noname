@@ -4,6 +4,7 @@ use bevy_spritesheet_animation::{
 };
 
 use crate::{
+    assets::{Entities, EntitiesHandle},
     player::{DirectionChanged, MovementDirection, Player},
     MyStates,
 };
@@ -64,40 +65,25 @@ fn animate_movement(
     }
 }
 
-fn setup(mut library: ResMut<AnimationLibrary>) {
-    let idle = Clip::from_frames([0]);
-    let running_right = Clip::from_frames(21..=28);
-    let running_down = Clip::from_frames(5..=12);
-    let running_up = Clip::from_frames(37..=44);
-    let running_up_right = Clip::from_frames(29..=36);
-    let running_down_right = Clip::from_frames(13..=20);
-
-    let idle = Animation::from_clip(library.register_clip(idle));
-    let running_right = Animation::from_clip(library.register_clip(running_right));
-    let running_down = Animation::from_clip(library.register_clip(running_down));
-    let running_up = Animation::from_clip(library.register_clip(running_up));
-    let running_up_right = Animation::from_clip(library.register_clip(running_up_right));
-    let running_down_right = Animation::from_clip(library.register_clip(running_down_right));
-
-    let idle_id = library.register_animation(idle);
-    let running_right_id = library.register_animation(running_right);
-    let running_down_id = library.register_animation(running_down);
-    let running_up_id = library.register_animation(running_up);
-    let running_up_right_id = library.register_animation(running_up_right);
-    let running_down_right_id = library.register_animation(running_down_right);
-
-    library.name_animation(idle_id, "walk").unwrap();
-    library
-        .name_animation(running_right_id, "running_right")
-        .unwrap();
-    library
-        .name_animation(running_down_id, "running_down")
-        .unwrap();
-    library.name_animation(running_up_id, "running_up").unwrap();
-    library
-        .name_animation(running_up_right_id, "running_up_right")
-        .unwrap();
-    library
-        .name_animation(running_down_right_id, "running_down_right")
-        .unwrap();
+fn setup(
+    mut library: ResMut<AnimationLibrary>,
+    mut entities: ResMut<Assets<Entities>>,
+    handle: Res<EntitiesHandle>,
+) {
+    if let Some(entities) = entities.remove(handle.entities.id()) {
+        entities.entities.into_values().for_each(|entity| {
+            entity
+                .animations
+                .into_iter()
+                .for_each(|(animation_name, frames)| {
+                    let clip = Clip::from_frames(frames);
+                    let clip_id = library.register_clip(clip);
+                    let animation = Animation::from_clip(clip_id);
+                    let animation_id = library.register_animation(animation);
+                    library
+                        .name_animation(animation_id, animation_name)
+                        .unwrap();
+                })
+        })
+    }
 }
