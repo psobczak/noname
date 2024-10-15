@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use bevy::{prelude::*, utils::hashbrown::HashMap};
 use bevy_asset_loader::{
     asset_collection::AssetCollection,
@@ -17,7 +15,7 @@ pub struct GameAssetsPlugin;
 impl Plugin for GameAssetsPlugin {
     fn build(&self, app: &mut App) {
         app.configure_loading_state(
-            LoadingStateConfig::new(MyStates::AssetLoading).load_collection::<EntitiesHandle>(),
+            LoadingStateConfig::new(MyStates::AssetLoading).load_collection::<EntitiesHandle>(), // .load_collection::<CharactersHandle>(),
         )
         .add_plugins(RonAssetPlugin::<Entities>::new(&["config.ron"]));
     }
@@ -25,32 +23,36 @@ impl Plugin for GameAssetsPlugin {
 
 #[derive(AssetCollection, Resource)]
 pub struct EntitiesHandle {
-    #[asset(path = "entities.config.ron")]
-    pub entities: Handle<Entities>,
+    #[asset(path = "characters.config.ron")]
+    pub handle: Handle<Entities>,
 }
 
 #[derive(serde::Deserialize, bevy::asset::Asset, bevy::reflect::TypePath, Debug)]
 pub struct Entities {
-    pub entities: HashMap<String, Entity>,
-}
-
-impl Entities {
-    pub fn get_entity(&self, name: &str) -> Option<&Entity> {
-        self.entities.get(name)
-    }
+    pub playable: PlayableCharacters,
+    pub monsters: HashMap<String, Monster>,
 }
 
 #[derive(serde::Deserialize, bevy::asset::Asset, bevy::reflect::TypePath, Debug)]
-pub struct Entity {
-    pub sprite: PathBuf,
-    pub sprite_sheet: Option<SpriteSheet>,
-    pub animations: HashMap<String, Vec<usize>>,
+pub struct Character {
+    pub texture: String,
+    pub portrait: u32,
 }
 
-#[derive(serde::Deserialize, bevy::asset::Asset, bevy::reflect::TypePath, Debug, Clone)]
-pub struct SpriteSheet {
-    pub tile_size_x: u32,
-    pub tile_size_y: u32,
-    pub rows: u32,
-    pub columns: u32,
+#[derive(serde::Deserialize, bevy::asset::Asset, bevy::reflect::TypePath, Debug)]
+pub struct PlayableCharacters {
+    pub characters: HashMap<String, Character>,
+    pub animations: Animations,
 }
+
+#[derive(serde::Deserialize, bevy::asset::Asset, bevy::reflect::TypePath, Debug)]
+pub struct Monster {
+    pub portrait: usize,
+    pub texture: String,
+    pub animations: Animations,
+}
+
+#[derive(
+    serde::Deserialize, bevy::asset::Asset, bevy::reflect::TypePath, Debug, DerefMut, Deref,
+)]
+pub struct Animations(pub HashMap<String, Vec<usize>>);

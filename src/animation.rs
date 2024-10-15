@@ -17,7 +17,7 @@ pub struct AnimationPlugin;
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(SpritesheetAnimationPlugin)
-            .add_systems(OnEnter(MyStates::Next), setup)
+            .add_systems(OnExit(MyStates::AssetLoading), setup)
             .add_systems(
                 Update,
                 (animate_movement, change_sprite_index, animate_movement)
@@ -70,20 +70,31 @@ fn setup(
     mut entities: ResMut<Assets<Entities>>,
     handle: Res<EntitiesHandle>,
 ) {
-    if let Some(entities) = entities.remove(handle.entities.id()) {
-        entities.entities.into_values().for_each(|entity| {
-            entity
+    if let Some(entities) = entities.get_mut(handle.handle.id()) {
+        let animations = &mut entities.playable.animations;
+        let _ = &entities.monsters.iter().for_each(|(_, monster)| {
+            monster
                 .animations
-                .into_iter()
+                .0
+                .iter()
                 .for_each(|(animation_name, frames)| {
-                    let clip = Clip::from_frames(frames);
-                    let clip_id = library.register_clip(clip);
-                    let animation = Animation::from_clip(clip_id);
-                    let animation_id = library.register_animation(animation);
-                    library
-                        .name_animation(animation_id, animation_name)
-                        .unwrap();
-                })
-        })
+                    animations
+                        .0
+                        .entry(animation_name.to_string())
+                        .insert(frames.to_vec());
+                });
+        });
+
+        animations.iter().for_each(|(animation_name, frames)| {
+            let clip = Clip::from_frames(frames.clone());
+            let clip_id = library.register_clip(clip);
+            let animation = Animation::from_clip(clip_id);
+            let animation_id = library.register_animation(animation);
+            library
+                .name_animation(animation_id, animation_name)
+                .unwrap();
+        });
+
+        info!("{:#?}", animations);
     }
 }
