@@ -1,16 +1,10 @@
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::prelude::*;
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
 
-use crate::{
-    animation::AnimationTimer,
-    assets::{Entities, EntitiesHandle},
-    common::{Health, Speed},
-    player::Player,
-    MyStates,
-};
+use crate::{common::Speed, player::Player, MyStates};
 
 pub struct EnemyPlugin;
 

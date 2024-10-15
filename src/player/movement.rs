@@ -16,12 +16,12 @@ impl Plugin for MovementPlugin {
 }
 
 fn move_player(
-    mut player: Query<(&mut Transform, &Speed, &mut MovementDirection), With<Player>>,
+    mut player: Query<(&mut Transform, &Speed, &mut MovementDirection, Entity), With<Player>>,
     input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    mut writer: EventWriter<DirectionChanged>,
+    mut commands: Commands,
 ) {
-    let (mut transform, speed, mut old_direction) =
+    let (mut transform, speed, mut old_direction, entity) =
         player.get_single_mut().expect("Player should exist");
 
     let mut direction = Vec2::ZERO;
@@ -44,7 +44,7 @@ fn move_player(
 
     let new_direction = MovementDirection::from_vec2(direction);
     if *old_direction != new_direction {
-        writer.send(DirectionChanged(new_direction.clone()));
+        commands.trigger_targets(DirectionChanged(new_direction.clone()), entity);
         *old_direction = new_direction;
     }
 
@@ -79,19 +79,6 @@ impl MovementDirection {
             [1.0, 1.0] => Self::RightUp,
             _ => Self::Idle,
         }
-    }
-
-    pub fn get_animation_indices(&self) -> Vec<usize> {
-        match self {
-            MovementDirection::Down => 5..=12,
-            MovementDirection::Up => 37..=44,
-            MovementDirection::UpLeft | MovementDirection::RightUp => 29..=36,
-            MovementDirection::DownLeft | MovementDirection::DownRight => 13..=20,
-            MovementDirection::Right | MovementDirection::Left => 21..=28,
-            MovementDirection::Idle => 0..=0,
-        }
-        .into_iter()
-        .collect()
     }
 }
 
