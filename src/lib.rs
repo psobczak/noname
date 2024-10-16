@@ -3,11 +3,15 @@ mod assets;
 mod common;
 mod enemy;
 mod player;
+mod resources;
 
 use animation::GameAnimationPlugin;
-use bevy::{input::common_conditions::input_toggle_active, prelude::*};
-use bevy_asset_loader::loading_state::{LoadingState, LoadingStateAppExt};
+use bevy::{
+    diagnostic::FrameTimeDiagnosticsPlugin, input::common_conditions::input_toggle_active,
+    prelude::*,
+};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use resources::ResourcePlugin;
 
 use crate::{assets::GameAssetsPlugin, enemy::EnemyPlugin, player::PlayerPlugin};
 
@@ -29,18 +33,17 @@ impl Plugin for GamePlugin {
                 .set(ImagePlugin::default_nearest()),
         )
         .init_state::<GameState>()
-        .add_loading_state(
-            LoadingState::new(GameState::AssetLoading).continue_to_state(GameState::Next),
-        )
         .add_plugins((
             PlayerPlugin,
             GameAnimationPlugin,
             EnemyPlugin,
             GameAssetsPlugin,
+            ResourcePlugin,
         ))
-        .add_plugins(
+        .add_plugins((
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Slash)),
-        )
+            FrameTimeDiagnosticsPlugin::default(),
+        ))
         .add_systems(Startup, setup);
     }
 }

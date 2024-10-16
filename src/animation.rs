@@ -5,7 +5,7 @@ use bevy_spritesheet_animation::{
 };
 
 use crate::{
-    assets::{Entities, EntitiesHandle},
+    assets::{AnimationsConfig, ConfigHandles},
     player::{DirectionChanged, MovementDirection, Player},
     GameState,
 };
@@ -77,32 +77,20 @@ fn on_player_direction_changed(
 
 fn load_animations(
     mut library: ResMut<AnimationLibrary>,
-    mut entities: ResMut<Assets<Entities>>,
-    handle: Res<EntitiesHandle>,
+    mut animatins_config: ResMut<Assets<AnimationsConfig>>,
+    handle: Res<ConfigHandles>,
 ) {
-    if let Some(entities) = entities.get_mut(handle.handle.id()) {
-        let animations = &mut entities.playable.animations;
-        let _ = &entities.monsters.iter().for_each(|(_, monster)| {
-            monster
-                .animations
-                .0
-                .iter()
-                .for_each(|(animation_name, frames)| {
-                    animations
-                        .0
-                        .entry(animation_name.to_string())
-                        .insert(frames.to_vec());
-                });
-        });
-
-        animations.iter().for_each(|(animation_name, frames)| {
-            let clip = Clip::from_frames(frames.clone());
-            let clip_id = library.register_clip(clip);
-            let animation = Animation::from_clip(clip_id);
-            let animation_id = library.register_animation(animation);
-            library
-                .name_animation(animation_id, animation_name)
-                .unwrap();
+    if let Some(animatins_config) = animatins_config.get_mut(handle.animations.id()) {
+        animatins_config.0.iter().for_each(|(_, animations)| {
+            animations.iter().for_each(|(animation_name, frames)| {
+                let clip = Clip::from_frames(frames.clone());
+                let clip_id = library.register_clip(clip);
+                let animation = Animation::from_clip(clip_id);
+                let animation_id = library.register_animation(animation);
+                library
+                    .name_animation(animation_id, animation_name)
+                    .unwrap();
+            })
         });
     }
 }

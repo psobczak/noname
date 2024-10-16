@@ -1,10 +1,15 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
 
-use crate::{common::Speed, player::Player, GameState};
+use crate::{
+    assets::GameAssetsHandles,
+    common::{Health, Speed},
+    player::Player,
+    GameState,
+};
 
 pub struct EnemyPlugin;
 
@@ -15,7 +20,7 @@ impl Plugin for EnemyPlugin {
                 Update,
                 (
                     move_towards_player,
-                    // spawn_halfling,
+                    spawn_halfling,
                     compare_x_pos_with_player,
                 )
                     .distributive_run_if(
@@ -102,73 +107,56 @@ fn on_direction_changed(
     }
 }
 
-// fn spawn_halfling(
-//     window: Query<&Window, With<PrimaryWindow>>,
-//     player: Query<&GlobalTransform, With<Player>>,
-//     mut timer: ResMut<SpawnTimer>,
-//     time: Res<Time>,
-//     mut commands: Commands,
-//     assets_handle: Res<EntitiesHandle>,
-//     assets: ResMut<Assets<Entities>>,
-//     asset_server: Res<AssetServer>,
-//     mut atlases: ResMut<Assets<TextureAtlasLayout>>,
-// ) {
-//     timer.0.tick(time.delta());
+fn spawn_halfling(
+    window: Query<&Window, With<PrimaryWindow>>,
+    player: Query<&GlobalTransform, With<Player>>,
+    mut timer: ResMut<SpawnTimer>,
+    time: Res<Time>,
+    mut commands: Commands,
+    monsters_handles: Res<GameAssetsHandles>,
+) {
+    timer.0.tick(time.delta());
 
-//     if timer.0.just_finished() {
-//         let player = player.single().translation();
-//         let window = window.single();
+    if timer.0.just_finished() {
+        let player = player.single().translation();
+        let window = window.single();
 
-//         let mut rng = rand::thread_rng();
+        let mut rng = rand::thread_rng();
 
-//         let spawn_direction: SpawnDirection = rand::random();
-//         let x = spawn_direction.calculate_x(window, &player);
-//         let y = spawn_direction.calculate_y(window, &player);
+        let spawn_direction: SpawnDirection = rand::random();
+        let x = spawn_direction.calculate_x(window, &player);
+        let y = spawn_direction.calculate_y(window, &player);
 
-//         let spawn_point = match (x, y) {
-//             (Some(x), _) => Vec2::new(
-//                 x,
-//                 rng.gen_range((player.y - window.height() / 2.0)..player.y + window.height() / 2.0),
-//             ),
-//             (_, Some(y)) => Vec2::new(
-//                 rng.gen_range((player.x - window.width() / 2.0)..player.x + window.width() / 2.0),
-//                 y,
-//             ),
-//             _ => unreachable!("This should never happen"),
-//         };
+        let spawn_point = match (x, y) {
+            (Some(x), _) => Vec2::new(
+                x,
+                rng.gen_range((player.y - window.height() / 2.0)..player.y + window.height() / 2.0),
+            ),
+            (_, Some(y)) => Vec2::new(
+                rng.gen_range((player.x - window.width() / 2.0)..player.x + window.width() / 2.0),
+                y,
+            ),
+            _ => unreachable!("This should never happen"),
+        };
 
-//         if let Some(entities) = assets.get(assets_handle.entities.id()) {
-//             let halfling = entities.get_entity("halfling").unwrap();
-//             info!("{halfling:?}");
-//             let sprite_sheet = halfling.sprite_sheet.clone().unwrap();
-
-//             let atlas = TextureAtlasLayout::from_grid(
-//                 UVec2::new(sprite_sheet.tile_size_x, sprite_sheet.tile_size_y),
-//                 sprite_sheet.columns,
-//                 sprite_sheet.rows,
-//                 None,
-//                 None,
-//             );
-
-//             let atlas_handle = atlases.add(atlas);
-
-//             commands
-//                 .spawn((
-//                     Enemy,
-//                     Speed(50.0),
-//                     Health(30),
-//                     SpriteBundle {
-//                         texture: asset_server.load(halfling.sprite.clone()),
-//                         transform: Transform::from_translation(spawn_point.extend(0.0)),
-//                         ..Default::default()
-//                     },
-//                     TextureAtlas::from(atlas_handle),
-//                     AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
-//                 ))
-//                 .observe(on_direction_changed);
-//         }
-//     }
-// }
+        commands
+            .spawn((
+                Enemy,
+                Speed(50.0),
+                Health(30),
+                SpriteBundle {
+                    texture: monsters_handles
+                        .get_monster_sheet_handle("halfling")
+                        .unwrap()
+                        .clone(),
+                    transform: Transform::from_translation(spawn_point.extend(0.0)),
+                    ..Default::default()
+                },
+                TextureAtlas::from(monsters_handles.halfling_layout.clone()),
+            ))
+            .observe(on_direction_changed);
+    }
+}
 
 fn move_towards_player(
     player: Query<&GlobalTransform, With<Player>>,

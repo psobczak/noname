@@ -1,0 +1,32 @@
+({
+    "characters.sheets": Folder (
+        path: "characters/sheets",
+    ),
+    "characters.portrait": File (
+        path: "characters/portraits.png"
+    ),
+    "characters.texture_atlas_layout": TextureAtlasLayout (
+        tile_size_x: 96,
+        tile_size_y: 64,
+        columns: 45,
+        rows: 1,
+    ),
+    "monsters.sheets": Folder (
+        path: "monsters/sheets"
+    ),
+    "monsters.halfling.texture_atlas_layout": TextureAtlasLayout (
+        tile_size_x: 96,
+        tile_size_y: 64,
+        columns: 11,
+        rows: 1,
+    ),
+     "resources.sheet": File (
+        path: "resources/treasure.png"
+    ),
+    "resources.texture_atlas_layout": TextureAtlasLayout (
+        tile_size_x: 32,
+        tile_size_y: 32,
+        columns: 8,
+        rows: 1,
+    ),
+})

@@ -2,17 +2,22 @@ use bevy::prelude::*;
 use bevy_spritesheet_animation::{library::AnimationLibrary, prelude::SpritesheetAnimation};
 
 use crate::{
+    assets::GameAssetsHandles,
     common::{Health, Speed},
     GameState,
 };
 
-use super::{movement::MovementDirection, DirectionChanged, Player, PlayerAssets};
+use super::{movement::MovementDirection, DirectionChanged, Player};
 
 pub struct SpawnPlugin;
 
 impl Plugin for SpawnPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Next), (spawn_player));
+        app.add_systems(OnEnter(GameState::Next), spawn_player)
+            .add_systems(
+                Update,
+                change_player_sprite.run_if(in_state(GameState::Next)),
+            );
     }
 }
 
@@ -28,13 +33,35 @@ pub struct PlayerBundle {
     sprite_sheet_animation: SpritesheetAnimation,
 }
 
+fn change_player_sprite(
+    input: Res<ButtonInput<KeyCode>>,
+    mut player: Query<&mut Handle<Image>, With<Player>>,
+    handles: Res<GameAssetsHandles>,
+) {
+    let barbarian = handles.get_character_sheet_handle("barbarian").unwrap();
+    let cleric = handles.get_character_sheet_handle("cleric").unwrap();
+
+    if input.just_pressed(KeyCode::Space) {
+        let mut sprite = player.single_mut();
+        if *sprite == *cleric {
+            *sprite = barbarian.clone();
+        } else {
+            *sprite = cleric.clone();
+        }
+    }
+}
+
 fn spawn_player(
     mut commands: Commands,
     camera: Query<Entity, (With<Camera>, With<Camera2d>)>,
     animations: Res<AnimationLibrary>,
-    assets: Res<PlayerAssets>,
+    handles: Res<GameAssetsHandles>,
 ) {
     let camera = camera.single();
+    let Some(sheet_handle) = handles.get_character_sheet_handle("alchemist") else {
+        panic!("player sheet should be present at this point");
+    };
+
     if let Some(idle_id) = animations.animation_with_name("player_idle") {
         commands
             .spawn(PlayerBundle {
@@ -43,11 +70,12 @@ fn spawn_player(
                 speed: Speed(100.0),
                 health: Health(100),
                 sprite_bundle: SpriteBundle {
-                    texture: assets.heroes.clone(),
+                    transform: Transform::from_xyz(0.0, 0.0, 10.0),
+                    texture: sheet_handle.clone(),
                     ..Default::default()
                 },
                 direction: MovementDirection::default(),
-                texture_atlas: TextureAtlas::from(assets.heroes_layut.clone()),
+                texture_atlas: TextureAtlas::from(handles.characters_layouts.clone()),
                 sprite_sheet_animation: SpritesheetAnimation::from_id(idle_id),
             })
             .observe(on_player_direction_changed)

@@ -1,9 +1,0 @@
-(
-    name: "Player",
-    schematics: {
-        "noname::player::Player": (),
-        "noname::custom::SpriteBundle": (
-            texture: AssetPath("heroes.png")
-        )
-    }
-)
