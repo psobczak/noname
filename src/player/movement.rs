@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{common::Speed, MyStates};
+use crate::{common::Speed, GameState};
 
 use super::Player;
 
@@ -10,7 +10,7 @@ impl Plugin for MovementPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_event::<DirectionChanged>().add_systems(
             Update,
-            move_player.run_if(in_state(MyStates::Next).and_then(any_with_component::<Player>)),
+            move_player.run_if(in_state(GameState::Next).and_then(any_with_component::<Player>)),
         );
     }
 }

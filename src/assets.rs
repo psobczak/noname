@@ -8,14 +8,14 @@ use bevy_asset_loader::{
 };
 use bevy_common_assets::ron::RonAssetPlugin;
 
-use crate::MyStates;
+use crate::GameState;
 
 pub struct GameAssetsPlugin;
 
 impl Plugin for GameAssetsPlugin {
     fn build(&self, app: &mut App) {
         app.configure_loading_state(
-            LoadingStateConfig::new(MyStates::AssetLoading).load_collection::<EntitiesHandle>(), // .load_collection::<CharactersHandle>(),
+            LoadingStateConfig::new(GameState::AssetLoading).load_collection::<EntitiesHandle>(), // .load_collection::<CharactersHandle>(),
         )
         .add_plugins(RonAssetPlugin::<Entities>::new(&["config.ron"]));
     }

@@ -4,7 +4,7 @@ use rand::{
     Rng,
 };
 
-use crate::{common::Speed, player::Player, MyStates};
+use crate::{common::Speed, player::Player, GameState};
 
 pub struct EnemyPlugin;
 
@@ -19,7 +19,7 @@ impl Plugin for EnemyPlugin {
                     compare_x_pos_with_player,
                 )
                     .distributive_run_if(
-                        in_state(MyStates::Next).and_then(any_with_component::<Player>),
+                        in_state(GameState::Next).and_then(any_with_component::<Player>),
                     ),
             );
     }

@@ -7,15 +7,15 @@ use bevy_spritesheet_animation::{
 use crate::{
     assets::{Entities, EntitiesHandle},
     player::{DirectionChanged, MovementDirection, Player},
-    MyStates,
+    GameState,
 };
 
-pub struct AnimationPlugin;
+pub struct GameAnimationPlugin;
 
-impl Plugin for AnimationPlugin {
+impl Plugin for GameAnimationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(SpritesheetAnimationPlugin)
-            .add_systems(OnExit(MyStates::AssetLoading), load_animations)
+            .add_systems(OnExit(GameState::AssetLoading), load_animations)
             .observe(on_player_direction_changed);
     }
 }

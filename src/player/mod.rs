@@ -8,14 +8,18 @@ use bevy_asset_loader::{
         LoadingStateAppExt,
     },
 };
+use bevy_spritesheet_animation::prelude::SpritesheetAnimation;
 use movement::MovementPlugin;
 use spawn::SpawnPlugin;
 
 use bevy::prelude::*;
 
-use crate::MyStates;
-
 pub use movement::{DirectionChanged, MovementDirection};
+
+use crate::{
+    common::{Health, Speed},
+    GameState,
+};
 
 pub struct PlayerPlugin;
 
@@ -23,13 +27,25 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((MovementPlugin, SpawnPlugin))
             .configure_loading_state(
-                LoadingStateConfig::new(MyStates::AssetLoading).load_collection::<PlayerAssets>(),
+                LoadingStateConfig::new(GameState::AssetLoading).load_collection::<PlayerAssets>(),
             );
     }
 }
 
 #[derive(Debug, Component)]
 pub struct Player;
+
+#[derive(Debug, Bundle)]
+pub struct PlayerBundle {
+    name: Name,
+    player: Player,
+    speed: Speed,
+    sprite_bundle: SpriteBundle,
+    health: Health,
+    direction: MovementDirection,
+    texture_atlas: TextureAtlas,
+    sprite_sheet_animation: SpritesheetAnimation,
+}
 
 #[derive(AssetCollection, Resource)]
 pub struct PlayerAssets {
