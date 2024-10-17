@@ -24,12 +24,12 @@ fn spawn_treasure(
     animations: Res<AnimationLibrary>,
 ) {
     commands.spawn((
-        Resource::Treasure,
+        Resource::Gold,
         SpriteBundle {
             texture: handles.resources.clone(),
             ..Default::default()
         },
         TextureAtlas::from(handles.resources_layout.clone()),
-        SpritesheetAnimation::from_id(animations.animation_with_name("treasure_blink").unwrap()),
+        SpritesheetAnimation::from_id(animations.animation_with_name("jewels_blink").unwrap()),
     ));
 }

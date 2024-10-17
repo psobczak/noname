@@ -21,12 +21,12 @@
         rows: 1,
     ),
      "resources.sheet": File (
-        path: "resources/treasure.png"
+        path: "resources.png"
     ),
     "resources.texture_atlas_layout": TextureAtlasLayout (
         tile_size_x: 32,
         tile_size_y: 32,
-        columns: 8,
-        rows: 1,
+        columns: 10,
+        rows: 6,
     ),
 })

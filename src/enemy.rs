@@ -18,14 +18,9 @@ impl Plugin for EnemyPlugin {
         app.insert_resource(SpawnTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
             .add_systems(
                 Update,
-                (
-                    move_towards_player,
-                    spawn_halfling,
-                    compare_x_pos_with_player,
-                )
-                    .distributive_run_if(
-                        in_state(GameState::Next).and_then(any_with_component::<Player>),
-                    ),
+                (move_towards_player, spawn_halfling, enemy_direction_change).distributive_run_if(
+                    in_state(GameState::Next).and_then(any_with_component::<Player>),
+                ),
             );
     }
 }
@@ -81,7 +76,7 @@ enum SpriteDirection {
     Right,
 }
 
-fn compare_x_pos_with_player(
+fn enemy_direction_change(
     mut commands: Commands,
     player: Query<&GlobalTransform, With<Player>>,
     enemies: Query<(&GlobalTransform, Entity), With<Enemy>>,
