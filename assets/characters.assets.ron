@@ -20,6 +20,12 @@
         columns: 11,
         rows: 1,
     ),
+    "monster.skeleton.texture_atlas_layout": TextureAtlasLayout (
+        tile_size_x: 38,
+        tile_size_y: 38,
+        columns: 12,
+        rows: 1,
+    ),
      "resources.sheet": File (
         path: "resources.png"
     ),

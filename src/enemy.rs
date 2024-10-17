@@ -1,4 +1,6 @@
+use avian2d::collision::Collider;
 use bevy::{prelude::*, window::PrimaryWindow};
+use bevy_spritesheet_animation::{library::AnimationLibrary, prelude::SpritesheetAnimation};
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
@@ -109,6 +111,7 @@ fn spawn_halfling(
     time: Res<Time>,
     mut commands: Commands,
     monsters_handles: Res<GameAssetsHandles>,
+    animations: Res<AnimationLibrary>,
 ) {
     timer.0.tick(time.delta());
 
@@ -134,6 +137,10 @@ fn spawn_halfling(
             _ => unreachable!("This should never happen"),
         };
 
+        let Some(animation_id) = animations.animation_with_name("hobgoblin_walk") else {
+            return error!("skeleton_walk animation does not exists");
+        };
+
         commands
             .spawn((
                 Enemy,
@@ -141,13 +148,15 @@ fn spawn_halfling(
                 Health(30),
                 SpriteBundle {
                     texture: monsters_handles
-                        .get_monster_sheet_handle("halfling")
+                        .get_monster_sheet_handle("skeleton")
                         .unwrap()
                         .clone(),
                     transform: Transform::from_translation(spawn_point.extend(0.0)),
                     ..Default::default()
                 },
-                TextureAtlas::from(monsters_handles.halfling_layout.clone()),
+                TextureAtlas::from(monsters_handles.skeleton_layout.clone()),
+                SpritesheetAnimation::from_id(animation_id),
+                Collider::rectangle(38.0, 38.0),
             ))
             .observe(on_direction_changed);
     }
@@ -160,7 +169,13 @@ fn move_towards_player(
 ) {
     let player_transform: &GlobalTransform = player.single();
     for (mut enemy_transform, speed) in &mut enemies {
-        let direction = enemy_transform.looking_at(player_transform.translation(), Vec3::Y);
-        enemy_transform.translation += direction.forward() * time.delta_seconds() * speed.0;
+        if player_transform
+            .translation()
+            .distance(enemy_transform.translation)
+            > 10.0
+        {
+            let direction = enemy_transform.looking_at(player_transform.translation(), Vec3::Y);
+            enemy_transform.translation += direction.forward() * time.delta_seconds() * speed.0;
+        }
     }
 }
