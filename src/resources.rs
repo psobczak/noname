@@ -14,12 +14,17 @@ impl Plugin for ResourcePlugin {
             .add_systems(OnEnter(GameState::Next), spawn_treasure)
             .add_systems(
                 Update,
-                (resource_pickup, on_resource_collected).run_if(in_state(GameState::Next)),
-            );
+                (
+                    resource_pickup,
+                    print_resources.run_if(resource_exists_and_changed::<Resources>),
+                )
+                    .run_if(in_state(GameState::Next)),
+            )
+            .observe(on_resource_collected);
     }
 }
 
-#[derive(Resource, Debug, Default)]
+#[derive(Resource, Debug, Default, Reflect)]
 pub struct Resources {
     gold: u32,
     crystals: u32,
@@ -88,38 +93,45 @@ pub struct ResourceCollected {
 }
 
 fn resource_pickup(
+    mut commands: Commands,
     collisions: Query<&CollidingEntities, With<Player>>,
     resources: Query<(Entity, &Resource), Without<Player>>,
-    mut writer: EventWriter<ResourceCollected>,
 ) {
     for CollidingEntities(collisions) in collisions.iter() {
         for (entity, resource) in &resources {
             if collisions.contains(&entity) {
-                writer.send(ResourceCollected {
-                    resource: resource.clone(),
-                    amount: 1,
-                });
+                commands.trigger_targets(
+                    ResourceCollected {
+                        resource: resource.clone(),
+                        amount: 1,
+                    },
+                    entity,
+                );
             }
         }
     }
 }
 
 fn on_resource_collected(
+    trigger: Trigger<ResourceCollected>,
     mut resources: ResMut<Resources>,
-    mut resources_collected: EventReader<ResourceCollected>,
+    mut commands: Commands,
 ) {
-    for event in resources_collected.read() {
-        match event.resource {
-            Resource::Gold => resources.gold += event.amount,
-            Resource::Crystals => resources.crystals += event.amount,
-            Resource::Mercury => resources.mercury += event.amount,
-            Resource::Sulfur => resources.sulfur += event.amount,
-            Resource::Ore => resources.ore += event.amount,
-            Resource::Wood => resources.wood += event.amount,
-            Resource::Gems => resources.gems += event.amount,
-        }
+    let event = trigger.event();
+    match event.resource {
+        Resource::Gold => resources.gold += event.amount,
+        Resource::Crystals => resources.crystals += event.amount,
+        Resource::Mercury => resources.mercury += event.amount,
+        Resource::Sulfur => resources.sulfur += event.amount,
+        Resource::Ore => resources.ore += event.amount,
+        Resource::Wood => resources.wood += event.amount,
+        Resource::Gems => resources.gems += event.amount,
     }
 
+    commands.entity(trigger.entity()).despawn_recursive();
+}
+
+fn print_resources(resources: Res<Resources>) {
     info!("{:?}", resources);
 }
 
