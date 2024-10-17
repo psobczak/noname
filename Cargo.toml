@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+avian2d = { version = "0.1.2", features = ["debug-plugin"] }
 bevy = { version = "0.14.2", features = ["dynamic_linking", "png"] }
 bevy-inspector-egui = "0.26.0"
 bevy_asset_loader = { version = "0.21.0", features = ["2d", "standard_dynamic_assets"] }

@@ -6,6 +6,7 @@ mod player;
 mod resources;
 
 use animation::GameAnimationPlugin;
+use avian2d::{prelude::PhysicsDebugPlugin, PhysicsPlugins};
 use bevy::{
     diagnostic::FrameTimeDiagnosticsPlugin, input::common_conditions::input_toggle_active,
     prelude::*,
@@ -43,6 +44,8 @@ impl Plugin for GamePlugin {
         .add_plugins((
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Slash)),
             FrameTimeDiagnosticsPlugin::default(),
+            PhysicsPlugins::default(),
+            PhysicsDebugPlugin::default(),
         ))
         .add_systems(Startup, setup);
     }

@@ -1,3 +1,4 @@
+use avian2d::prelude::Collider;
 use bevy::prelude::*;
 use bevy_spritesheet_animation::{library::AnimationLibrary, prelude::SpritesheetAnimation};
 
@@ -13,11 +14,7 @@ pub struct SpawnPlugin;
 
 impl Plugin for SpawnPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Next), spawn_player)
-            .add_systems(
-                Update,
-                change_player_sprite.run_if(in_state(GameState::Next)),
-            );
+        app.add_systems(OnEnter(GameState::Next), spawn_player);
     }
 }
 
@@ -31,24 +28,7 @@ pub struct PlayerBundle {
     direction: MovementDirection,
     texture_atlas: TextureAtlas,
     sprite_sheet_animation: SpritesheetAnimation,
-}
-
-fn change_player_sprite(
-    input: Res<ButtonInput<KeyCode>>,
-    mut player: Query<&mut Handle<Image>, With<Player>>,
-    handles: Res<GameAssetsHandles>,
-) {
-    let barbarian = handles.get_character_sheet_handle("barbarian").unwrap();
-    let cleric = handles.get_character_sheet_handle("cleric").unwrap();
-
-    if input.just_pressed(KeyCode::Space) {
-        let mut sprite = player.single_mut();
-        if *sprite == *cleric {
-            *sprite = barbarian.clone();
-        } else {
-            *sprite = cleric.clone();
-        }
-    }
+    collider: Collider,
 }
 
 fn spawn_player(
@@ -58,7 +38,7 @@ fn spawn_player(
     handles: Res<GameAssetsHandles>,
 ) {
     let camera = camera.single();
-    let Some(sheet_handle) = handles.get_character_sheet_handle("alchemist") else {
+    let Some(sheet_handle) = handles.get_character_sheet_handle("cleric") else {
         panic!("player sheet should be present at this point");
     };
 
@@ -77,6 +57,7 @@ fn spawn_player(
                 direction: MovementDirection::default(),
                 texture_atlas: TextureAtlas::from(handles.characters_layouts.clone()),
                 sprite_sheet_animation: SpritesheetAnimation::from_id(idle_id),
+                collider: Collider::rectangle(48.0, 40.0),
             })
             .observe(on_player_direction_changed)
             .add_child(camera);
