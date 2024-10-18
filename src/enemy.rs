@@ -18,17 +18,34 @@ pub struct EnemyPlugin;
 impl Plugin for EnemyPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(SpawnTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
+            .add_event::<EnemyKilled>()
             .add_systems(
                 Update,
-                (move_towards_player, spawn_halfling, enemy_direction_change).distributive_run_if(
-                    in_state(GameState::Next).and_then(any_with_component::<Player>),
-                ),
+                (
+                    move_towards_player,
+                    spawn_halfling,
+                    enemy_direction_change,
+                    on_enemy_killed,
+                    time_dot_damage,
+                )
+                    .distributive_run_if(
+                        in_state(GameState::Next).and_then(any_with_component::<Player>),
+                    ),
             );
     }
 }
 
+#[derive(Event)]
+pub struct EnemyKilled {
+    pub entity: Entity,
+    pub place: Vec3,
+}
+
 #[derive(Debug, Component)]
 pub struct Enemy;
+
+#[derive(Component, Deref, DerefMut)]
+struct DotTimer(Timer);
 
 #[derive(Resource)]
 struct SpawnTimer(Timer);
@@ -157,6 +174,7 @@ fn spawn_halfling(
                 TextureAtlas::from(monsters_handles.skeleton_layout.clone()),
                 SpritesheetAnimation::from_id(animation_id),
                 Collider::rectangle(38.0, 38.0),
+                DotTimer(Timer::from_seconds(2.0, TimerMode::Repeating)),
             ))
             .observe(on_direction_changed);
     }
@@ -176,6 +194,33 @@ fn move_towards_player(
         {
             let direction = enemy_transform.looking_at(player_transform.translation(), Vec3::Y);
             enemy_transform.translation += direction.forward() * time.delta_seconds() * speed.0;
+        }
+    }
+}
+
+fn on_enemy_killed(mut commands: Commands, mut enemy_killed: EventReader<EnemyKilled>) {
+    for event in enemy_killed.read() {
+        commands.entity(event.entity).despawn_recursive();
+    }
+}
+
+fn time_dot_damage(
+    mut writer: EventWriter<EnemyKilled>,
+    time: Res<Time>,
+    mut enemies: Query<(Entity, &mut Health, &mut DotTimer, &GlobalTransform), With<Enemy>>,
+) {
+    for (entity, mut health, mut dot_timer, transform) in &mut enemies {
+        dot_timer.tick(time.delta());
+
+        if dot_timer.just_finished() {
+            health.0 -= 10;
+        }
+
+        if health.0 <= 0 {
+            writer.send(EnemyKilled {
+                entity,
+                place: transform.translation(),
+            });
         }
     }
 }

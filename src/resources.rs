@@ -1,8 +1,9 @@
 use avian2d::prelude::{Collider, CollidingEntities};
 use bevy::{prelude::*, reflect::Enum};
 use bevy_spritesheet_animation::{library::AnimationLibrary, prelude::SpritesheetAnimation};
+use rand::{distributions::Standard, prelude::Distribution};
 
-use crate::{assets::GameAssetsHandles, player::Player, GameState};
+use crate::{assets::GameAssetsHandles, enemy::EnemyKilled, player::Player, GameState};
 
 pub struct ResourcePlugin;
 
@@ -11,11 +12,11 @@ impl Plugin for ResourcePlugin {
         app.register_type::<Resource>()
             .add_event::<ResourceCollected>()
             .init_resource::<Resources>()
-            .add_systems(OnEnter(GameState::Next), spawn_treasure)
             .add_systems(
                 Update,
                 (
                     resource_pickup,
+                    on_enemy_killed,
                     print_resources.run_if(resource_exists_and_changed::<Resources>),
                 )
                     .run_if(in_state(GameState::Next)),
@@ -46,6 +47,20 @@ pub enum Resource {
     Gems,
 }
 
+impl Distribution<Resource> for Standard {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Resource {
+        match rng.gen_range(0.0..=1.0) {
+            0.0..0.2 => Resource::Gold,
+            0.2..0.4 => Resource::Wood,
+            0.4..0.6 => Resource::Sulfur,
+            0.6..0.8 => Resource::Ore,
+            0.8..0.9 => Resource::Mercury,
+            0.9..0.95 => Resource::Crystals,
+            _ => Resource::Gems,
+        }
+    }
+}
+
 #[derive(Bundle, Debug)]
 pub struct ResourceBundle {
     name: Name,
@@ -61,6 +76,7 @@ impl ResourceBundle {
         resource: Resource,
         handles: &GameAssetsHandles,
         animations: &AnimationLibrary,
+        translation: Vec3,
     ) -> Option<Self> {
         let animation_id = match resource {
             Resource::Gold => animations.animation_with_name("gold_blink")?,
@@ -77,6 +93,7 @@ impl ResourceBundle {
             resource,
             sprite_bundle: SpriteBundle {
                 texture: handles.resources.clone(),
+                transform: Transform::from_translation(translation),
                 ..Default::default()
             },
             texture_atlas: TextureAtlas::from(handles.resources_layout.clone()),
@@ -135,14 +152,19 @@ fn print_resources(resources: Res<Resources>) {
     info!("{:?}", resources);
 }
 
-fn spawn_treasure(
+fn on_enemy_killed(
     mut commands: Commands,
+    mut enemy_killed: EventReader<EnemyKilled>,
     handles: Res<GameAssetsHandles>,
     animations: Res<AnimationLibrary>,
 ) {
-    let Some(bundle) = ResourceBundle::new(Resource::Gold, &handles, &animations) else {
-        return error!("Failed to create resource bundle");
-    };
+    for event in enemy_killed.read() {
+        let resource: Resource = rand::random();
 
-    commands.spawn(bundle);
+        let Some(bundle) = ResourceBundle::new(resource, &handles, &animations, event.place) else {
+            return error!("Failed to create resource bundle");
+        };
+
+        commands.spawn(bundle);
+    }
 }
