@@ -1,6 +1,8 @@
 use avian2d::collision::Collider;
-use bevy::{prelude::*, window::PrimaryWindow};
-use bevy_spritesheet_animation::{library::AnimationLibrary, prelude::SpritesheetAnimation};
+use bevy::{prelude::*, utils::hashbrown::HashSet, window::PrimaryWindow};
+use bevy_spritesheet_animation::{
+    events::AnimationEvent, library::AnimationLibrary, prelude::SpritesheetAnimation,
+};
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
@@ -23,15 +25,58 @@ impl Plugin for EnemyPlugin {
                 Update,
                 (
                     move_towards_player,
-                    spawn_halfling,
+                    spawn_enemy,
                     enemy_direction_change,
-                    on_enemy_killed,
                     time_dot_damage,
+                    on_dying,
+                    on_death_animation_end,
                 )
                     .distributive_run_if(
                         in_state(GameState::Next).and_then(any_with_component::<Player>),
                     ),
             );
+    }
+}
+
+#[derive(Bundle, Debug)]
+pub struct EnemyBundle {
+    name: Name,
+    enemy: Enemy,
+    speed: Speed,
+    health: Health,
+    sprite_bundle: SpriteBundle,
+    texture_atlas: TextureAtlas,
+    sprite_sheet_animation: SpritesheetAnimation,
+    collider: Collider,
+}
+
+impl EnemyBundle {
+    fn new(
+        name: &str,
+        speed: f32,
+        health: i32,
+        spawn_point: Vec3,
+        monsters_handles: Res<GameAssetsHandles>,
+        animations: Res<AnimationLibrary>,
+    ) -> Option<Self> {
+        let texture_atlas_layout: &Handle<TextureAtlasLayout> =
+            monsters_handles.get_field(&format!("{name}_layout"))?;
+        Some(Self {
+            name: Name::from(name),
+            speed: Speed(speed),
+            health: Health(health),
+            enemy: Enemy,
+            sprite_bundle: SpriteBundle {
+                texture: monsters_handles.get_monster_sheet_handle(name)?.clone(),
+                transform: Transform::from_translation(spawn_point),
+                ..Default::default()
+            },
+            texture_atlas: TextureAtlas::from(texture_atlas_layout.clone()),
+            collider: Collider::rectangle(10.0, 10.0),
+            sprite_sheet_animation: SpritesheetAnimation::from_id(
+                animations.animation_with_name(format!("{name}_walk"))?,
+            ),
+        })
     }
 }
 
@@ -98,7 +143,7 @@ enum SpriteDirection {
 fn enemy_direction_change(
     mut commands: Commands,
     player: Query<&GlobalTransform, With<Player>>,
-    enemies: Query<(&GlobalTransform, Entity), With<Enemy>>,
+    enemies: Query<(&GlobalTransform, Entity), (With<Enemy>, Without<Dying>)>,
 ) {
     let player = player.single();
     for (enemy, entity) in &enemies {
@@ -121,7 +166,7 @@ fn on_direction_changed(
     }
 }
 
-fn spawn_halfling(
+fn spawn_enemy(
     window: Query<&Window, With<PrimaryWindow>>,
     player: Query<&GlobalTransform, With<Player>>,
     mut timer: ResMut<SpawnTimer>,
@@ -154,26 +199,17 @@ fn spawn_halfling(
             _ => unreachable!("This should never happen"),
         };
 
-        let Some(animation_id) = animations.animation_with_name("hobgoblin_walk") else {
-            return error!("skeleton_walk animation does not exists");
-        };
-
         commands
             .spawn((
-                Enemy,
-                Speed(50.0),
-                Health(30),
-                SpriteBundle {
-                    texture: monsters_handles
-                        .get_monster_sheet_handle("skeleton")
-                        .unwrap()
-                        .clone(),
-                    transform: Transform::from_translation(spawn_point.extend(0.0)),
-                    ..Default::default()
-                },
-                TextureAtlas::from(monsters_handles.skeleton_layout.clone()),
-                SpritesheetAnimation::from_id(animation_id),
-                Collider::rectangle(38.0, 38.0),
+                EnemyBundle::new(
+                    "monk",
+                    30.0,
+                    40,
+                    spawn_point.extend(0.0),
+                    monsters_handles,
+                    animations,
+                )
+                .unwrap(),
                 DotTimer(Timer::from_seconds(2.0, TimerMode::Repeating)),
             ))
             .observe(on_direction_changed);
@@ -182,7 +218,7 @@ fn spawn_halfling(
 
 fn move_towards_player(
     player: Query<&GlobalTransform, With<Player>>,
-    mut enemies: Query<(&mut Transform, &Speed), With<Enemy>>,
+    mut enemies: Query<(&mut Transform, &Speed), (With<Enemy>, Without<Dying>)>,
     time: Res<Time>,
 ) {
     let player_transform: &GlobalTransform = player.single();
@@ -198,13 +234,24 @@ fn move_towards_player(
     }
 }
 
-fn on_enemy_killed(mut commands: Commands, mut enemy_killed: EventReader<EnemyKilled>) {
-    for event in enemy_killed.read() {
-        commands.entity(event.entity).despawn_recursive();
+#[derive(Component)]
+pub struct Dying;
+
+fn on_dying(
+    mut query: Query<(&mut SpritesheetAnimation, &Name), (Added<Dying>, With<Enemy>)>,
+    animations: Res<AnimationLibrary>,
+) {
+    for (mut sprite_animation, name) in &mut query {
+        let death_animation = animations
+            .animation_with_name(format!("{}_idle", name))
+            .unwrap();
+
+        sprite_animation.switch(death_animation);
     }
 }
 
 fn time_dot_damage(
+    mut commands: Commands,
     mut writer: EventWriter<EnemyKilled>,
     time: Res<Time>,
     mut enemies: Query<(Entity, &mut Health, &mut DotTimer, &GlobalTransform), With<Enemy>>,
@@ -217,10 +264,32 @@ fn time_dot_damage(
         }
 
         if health.0 <= 0 {
+            commands.entity(entity).insert(Dying);
+            commands.entity(entity).remove::<Health>();
+            commands.entity(entity).remove::<Collider>();
             writer.send(EnemyKilled {
                 entity,
                 place: transform.translation(),
             });
+        }
+    }
+}
+
+fn on_death_animation_end(
+    mut commands: Commands,
+    mut events: EventReader<AnimationEvent>,
+    dying_enemies: Query<Entity, (With<Enemy>, With<Dying>)>,
+) {
+    for animation_event in events.read() {
+        if let AnimationEvent::AnimationRepetitionEnd {
+            animation_repetition,
+            entity,
+            ..
+        } = animation_event
+        {
+            if animation_repetition == &1 && dying_enemies.get(*entity).is_ok() {
+                commands.entity(*entity).despawn_recursive();
+            }
         }
     }
 }

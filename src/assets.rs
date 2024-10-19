@@ -38,6 +38,8 @@ pub struct GameAssetsHandles {
     pub halfling_layout: Handle<TextureAtlasLayout>,
     #[asset(key = "monster.skeleton.texture_atlas_layout")]
     pub skeleton_layout: Handle<TextureAtlasLayout>,
+    #[asset(key = "monster.monk.texture_atlas_layout")]
+    pub monk_layout: Handle<TextureAtlasLayout>,
     #[asset(key = "monsters.sheets", collection(typed, mapped))]
     pub monsters_sheets: HashMap<String, Handle<Image>>,
     #[asset(key = "resources.sheet")]

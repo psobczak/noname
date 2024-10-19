@@ -26,6 +26,12 @@
         columns: 12,
         rows: 1,
     ),
+    "monster.monk.texture_atlas_layout": TextureAtlasLayout (
+        tile_size_x: 64,
+        tile_size_y: 98,
+        columns: 7,
+        rows: 2,
+    ),
      "resources.sheet": File (
         path: "resources.png"
     ),

@@ -1,9 +1,16 @@
 use avian2d::prelude::{Collider, CollidingEntities};
 use bevy::{prelude::*, reflect::Enum};
-use bevy_spritesheet_animation::{library::AnimationLibrary, prelude::SpritesheetAnimation};
+use bevy_spritesheet_animation::{
+    events::AnimationEvent, library::AnimationLibrary, prelude::SpritesheetAnimation,
+};
 use rand::{distributions::Standard, prelude::Distribution};
 
-use crate::{assets::GameAssetsHandles, enemy::EnemyKilled, player::Player, GameState};
+use crate::{
+    assets::GameAssetsHandles,
+    enemy::{Dying, Enemy},
+    player::Player,
+    GameState,
+};
 
 pub struct ResourcePlugin;
 
@@ -154,17 +161,36 @@ fn print_resources(resources: Res<Resources>) {
 
 fn on_enemy_killed(
     mut commands: Commands,
-    mut enemy_killed: EventReader<EnemyKilled>,
+    mut animation_events: EventReader<AnimationEvent>,
     handles: Res<GameAssetsHandles>,
     animations: Res<AnimationLibrary>,
+    dying_enemies: Query<(Entity, &GlobalTransform), (With<Enemy>, With<Dying>)>,
 ) {
-    for event in enemy_killed.read() {
-        let resource: Resource = rand::random();
+    for animation_event in animation_events.read() {
+        if let AnimationEvent::AnimationRepetitionEnd {
+            animation_repetition,
+            entity,
+            ..
+        } = animation_event
+        {
+            let Ok(killed_enemy) = dying_enemies.get(*entity) else {
+                return;
+            };
 
-        let Some(bundle) = ResourceBundle::new(resource, &handles, &animations, event.place) else {
-            return error!("Failed to create resource bundle");
-        };
+            if animation_repetition == &1 {
+                let resource: Resource = rand::random();
 
-        commands.spawn(bundle);
+                let Some(bundle) = ResourceBundle::new(
+                    resource,
+                    &handles,
+                    &animations,
+                    killed_enemy.1.translation(),
+                ) else {
+                    return error!("Failed to create resource bundle");
+                };
+
+                commands.spawn(bundle);
+            }
+        }
     }
 }
