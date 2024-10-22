@@ -12,6 +12,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_tweening::TweeningPlugin;
 use resources::ResourcePlugin;
 
 use crate::{assets::GameAssetsPlugin, enemy::EnemyPlugin, player::PlayerPlugin};
@@ -46,6 +47,7 @@ impl Plugin for GamePlugin {
             FrameTimeDiagnosticsPlugin::default(),
             PhysicsPlugins::default(),
             PhysicsDebugPlugin::default(),
+            TweeningPlugin,
         ))
         .add_systems(Startup, setup);
     }

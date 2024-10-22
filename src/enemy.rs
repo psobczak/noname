@@ -1,8 +1,9 @@
 use avian2d::collision::Collider;
-use bevy::{prelude::*, utils::hashbrown::HashSet, window::PrimaryWindow};
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_spritesheet_animation::{
     events::AnimationEvent, library::AnimationLibrary, prelude::SpritesheetAnimation,
 };
+
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
@@ -19,7 +20,7 @@ pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(SpawnTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
+        app.insert_resource(SpawnTimer(Timer::from_seconds(0.05, TimerMode::Repeating)))
             .add_event::<EnemyKilled>()
             .add_systems(
                 Update,
@@ -254,7 +255,10 @@ fn time_dot_damage(
     mut commands: Commands,
     mut writer: EventWriter<EnemyKilled>,
     time: Res<Time>,
-    mut enemies: Query<(Entity, &mut Health, &mut DotTimer, &GlobalTransform), With<Enemy>>,
+    mut enemies: Query<
+        (Entity, &mut Health, &mut DotTimer, &GlobalTransform),
+        (With<Enemy>, Without<Dying>),
+    >,
 ) {
     for (entity, mut health, mut dot_timer, transform) in &mut enemies {
         dot_timer.tick(time.delta());

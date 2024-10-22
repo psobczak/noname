@@ -1,7 +1,13 @@
+use std::time::Duration;
+
 use avian2d::prelude::{Collider, CollidingEntities};
 use bevy::{prelude::*, reflect::Enum};
 use bevy_spritesheet_animation::{
     events::AnimationEvent, library::AnimationLibrary, prelude::SpritesheetAnimation,
+};
+use bevy_tweening::{
+    lens::TransformPositionLens, Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween,
+    TweenCompleted,
 };
 use rand::{distributions::Standard, prelude::Distribution};
 
@@ -24,7 +30,12 @@ impl Plugin for ResourcePlugin {
                 (
                     resource_pickup,
                     on_enemy_killed,
-                    print_resources.run_if(resource_exists_and_changed::<Resources>),
+                    (
+                        mark_resource_as_close,
+                        mark_resource_as_following,
+                        update_resource_position,
+                    )
+                        .chain(),
                 )
                     .run_if(in_state(GameState::Next)),
             )
@@ -68,6 +79,82 @@ impl Distribution<Resource> for Standard {
     }
 }
 
+#[derive(Component)]
+struct CloseToPlayer;
+
+#[derive(Component)]
+struct FollowingPlayer;
+
+fn mark_resource_as_close(
+    mut commands: Commands,
+    player: Query<&Transform, With<Player>>,
+    resources: Query<
+        (Entity, &Transform),
+        (Without<Player>, With<Resource>, Without<CloseToPlayer>),
+    >,
+) {
+    let player_transform = player.single();
+
+    for (resource, resource_transofrm) in &resources {
+        if resource_transofrm
+            .translation
+            .distance(player_transform.translation)
+            < 100.0
+        {
+            let tween_direction =
+                player_transform.looking_at(resource_transofrm.translation, Vec3::Y);
+
+            let tween = Tween::new(
+                EaseFunction::BackIn,
+                Duration::from_millis(350),
+                TransformPositionLens {
+                    start: resource_transofrm.translation,
+                    end: tween_direction.translation,
+                },
+            )
+            .with_repeat_count(RepeatCount::Finite(1))
+            .with_repeat_strategy(RepeatStrategy::MirroredRepeat);
+
+            commands
+                .entity(resource)
+                .insert(Animator::new(tween))
+                .insert(CloseToPlayer);
+        }
+    }
+}
+
+fn mark_resource_as_following(
+    mut commands: Commands,
+    mut completed_tweens: EventReader<TweenCompleted>,
+    resources: Query<
+        Entity,
+        (
+            With<Resource>,
+            With<CloseToPlayer>,
+            Without<FollowingPlayer>,
+        ),
+    >,
+) {
+    for tween in &mut completed_tweens.read() {
+        if let Ok(tween) = resources.get(tween.entity) {
+            commands.entity(tween).remove::<CloseToPlayer>();
+            commands.entity(tween).insert(FollowingPlayer);
+        }
+    }
+}
+
+fn update_resource_position(
+    player: Query<&GlobalTransform, With<Player>>,
+    mut resources: Query<&mut Transform, (With<Resource>, Added<FollowingPlayer>)>,
+    time: Res<Time>,
+) {
+    let player_transform = player.single();
+    for mut transform in &mut resources {
+        let direction = transform.looking_at(player_transform.translation(), Vec3::Y);
+        transform.translation += direction.forward() * time.delta_seconds() * 50.0;
+    }
+}
+
 #[derive(Bundle, Debug)]
 pub struct ResourceBundle {
     name: Name,
@@ -105,7 +192,7 @@ impl ResourceBundle {
             },
             texture_atlas: TextureAtlas::from(handles.resources_layout.clone()),
             sprite_sheet_animation: SpritesheetAnimation::from_id(animation_id),
-            collider: Collider::rectangle(35.0, 35.0),
+            collider: Collider::rectangle(15.0, 15.0),
         })
     }
 }
@@ -155,10 +242,6 @@ fn on_resource_collected(
     commands.entity(trigger.entity()).despawn_recursive();
 }
 
-fn print_resources(resources: Res<Resources>) {
-    info!("{:?}", resources);
-}
-
 fn on_enemy_killed(
     mut commands: Commands,
     mut animation_events: EventReader<AnimationEvent>,
@@ -174,6 +257,7 @@ fn on_enemy_killed(
         } = animation_event
         {
             let Ok(killed_enemy) = dying_enemies.get(*entity) else {
+                info!("Resturing earlt");
                 return;
             };
 

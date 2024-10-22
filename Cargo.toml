@@ -11,5 +11,6 @@ bevy_asset_loader = { version = "0.21.0", features = ["2d", "standard_dynamic_as
 bevy_common_assets = { version = "0.11.0", features = ["ron"] }
 bevy_rand = { version = "0.7.1", features =  ["rand_chacha", "wyrand"]}
 bevy_spritesheet_animation = "0.4.2"
+bevy_tweening = "0.11.0"
 rand = "0.8.5"
 serde = { version = "1.0.210", features = ["derive"] }

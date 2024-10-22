@@ -57,7 +57,7 @@ fn spawn_player(
                 direction: MovementDirection::default(),
                 texture_atlas: TextureAtlas::from(handles.characters_layouts.clone()),
                 sprite_sheet_animation: SpritesheetAnimation::from_id(idle_id),
-                collider: Collider::rectangle(48.0, 40.0),
+                collider: Collider::rectangle(30.0, 35.0),
             })
             .observe(on_player_direction_changed)
             .add_child(camera);
