@@ -86,6 +86,7 @@ struct CloseToPlayer;
 #[derive(Component)]
 struct FollowingPlayer;
 
+#[allow(clippy::type_complexity)]
 fn mark_resource_as_close(
     mut commands: Commands,
     player: Query<&Transform, With<Player>>,
@@ -125,6 +126,7 @@ fn mark_resource_as_close(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn mark_resource_as_following(
     mut commands: Commands,
     mut completed_tweens: EventReader<TweenCompleted>,
@@ -243,6 +245,7 @@ fn on_resource_collected(
     commands.entity(trigger.entity()).despawn_recursive();
 }
 
+#[allow(clippy::type_complexity)]
 fn on_enemy_killed(
     mut commands: Commands,
     mut animation_events: EventReader<AnimationEvent>,

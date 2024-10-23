@@ -27,7 +27,6 @@ impl Plugin for EnemyPlugin {
             Duration::from_millis(50),
             TimerMode::Repeating,
         )))
-        .add_event::<EnemyKilled>()
         .add_plugins(
             AutomaticUpdate::<NearestNeighbour>::new().with_spatial_ds(SpatialStructure::KDTree2),
         )
@@ -93,12 +92,7 @@ impl EnemyBundle {
     }
 }
 
-#[derive(Event)]
-pub struct EnemyKilled {
-    pub entity: Entity,
-    pub place: Vec3,
-}
-
+#[allow(clippy::type_complexity)]
 fn add_colliders_to_close_enemies(
     mut commands: Commands,
     close_enemies: Res<KDTree2<NearestNeighbour>>,
@@ -172,6 +166,7 @@ enum SpriteDirection {
     Right,
 }
 
+#[allow(clippy::type_complexity)]
 fn enemy_direction_change(
     mut commands: Commands,
     player: Query<&GlobalTransform, With<Player>>,
@@ -249,6 +244,7 @@ fn spawn_enemy(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn move_towards_player(
     player: Query<&GlobalTransform, With<Player>>,
     mut enemies: Query<(&mut Transform, &Speed), (With<Enemy>, Without<Dying>)>,
@@ -273,6 +269,7 @@ pub struct Dying;
 #[derive(Component, Default)]
 struct NearestNeighbour;
 
+#[allow(clippy::type_complexity)]
 fn on_dying(
     mut query: Query<(&mut SpritesheetAnimation, &Name), (Added<Dying>, With<Enemy>)>,
     animations: Res<AnimationLibrary>,
@@ -297,34 +294,6 @@ fn kill_all_on_screen(
             .map(|entity| (entity, Dying))
             .collect::<Vec<_>>();
         commands.insert_or_spawn_batch(enemies);
-    }
-}
-
-fn time_dot_damage(
-    mut commands: Commands,
-    mut writer: EventWriter<EnemyKilled>,
-    time: Res<Time>,
-    mut enemies: Query<
-        (Entity, &mut Health, &mut DotTimer, &GlobalTransform),
-        (With<Enemy>, Without<Dying>),
-    >,
-) {
-    for (entity, mut health, mut dot_timer, transform) in &mut enemies {
-        dot_timer.tick(time.delta());
-
-        if dot_timer.just_finished() {
-            health.0 -= 10;
-        }
-
-        if health.0 <= 0 {
-            commands.entity(entity).insert(Dying);
-            commands.entity(entity).remove::<Health>();
-            commands.entity(entity).remove::<Collider>();
-            writer.send(EnemyKilled {
-                entity,
-                place: transform.translation(),
-            });
-        }
     }
 }
 

@@ -45,7 +45,7 @@ impl Plugin for GamePlugin {
         ))
         .add_plugins((
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Slash)),
-            FrameTimeDiagnosticsPlugin::default(),
+            FrameTimeDiagnosticsPlugin,
             PhysicsPlugins::default(),
             PhysicsDebugPlugin::default(),
             TweeningPlugin,

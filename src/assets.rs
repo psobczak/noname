@@ -52,13 +52,13 @@ impl GameAssetsHandles {
     pub fn get_character_sheet_handle(&self, name: &str) -> Option<&Handle<Image>> {
         self.characters_sheets
             .iter()
-            .find_map(|(sheet, handle)| sheet.contains(name).then(|| handle))
+            .find_map(|(sheet, handle)| sheet.contains(name).then_some(handle))
     }
 
     pub fn get_monster_sheet_handle(&self, name: &str) -> Option<&Handle<Image>> {
         self.monsters_sheets
             .iter()
-            .find_map(|(sheet, handle)| sheet.contains(name).then(|| handle))
+            .find_map(|(sheet, handle)| sheet.contains(name).then_some(handle))
     }
 }
 
