@@ -14,7 +14,7 @@ pub struct SpawnPlugin;
 
 impl Plugin for SpawnPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Next), spawn_player);
+        app.add_systems(OnExit(GameState::AssetLoading), spawn_player);
     }
 }
 

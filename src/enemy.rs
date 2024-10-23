@@ -1,5 +1,8 @@
+use std::time::Duration;
+
 use avian2d::collision::Collider;
 use bevy::{prelude::*, window::PrimaryWindow};
+use bevy_spatial::{kdtree::KDTree2, AutomaticUpdate, SpatialAccess, SpatialStructure};
 use bevy_spritesheet_animation::{
     events::AnimationEvent, library::AnimationLibrary, prelude::SpritesheetAnimation,
 };
@@ -20,22 +23,31 @@ pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(SpawnTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
-            .add_event::<EnemyKilled>()
-            .add_systems(
-                Update,
-                (
-                    move_towards_player,
-                    spawn_enemy,
-                    enemy_direction_change,
-                    time_dot_damage,
-                    on_dying,
-                    on_death_animation_end,
-                )
-                    .distributive_run_if(
-                        in_state(GameState::Next).and_then(any_with_component::<Player>),
-                    ),
-            );
+        app.insert_resource(SpawnTimer(Timer::new(
+            Duration::from_millis(50),
+            TimerMode::Repeating,
+        )))
+        .add_event::<EnemyKilled>()
+        .add_plugins(
+            AutomaticUpdate::<NearestNeighbour>::new().with_spatial_ds(SpatialStructure::KDTree2),
+        )
+        .add_systems(
+            Update,
+            (
+                move_towards_player,
+                spawn_enemy,
+                enemy_direction_change,
+                // time_dot_damage,
+                on_dying,
+                on_death_animation_end,
+                add_colliders_to_close_enemies,
+                kill_all_on_screen,
+                // find_enemies_close_to_player,
+            )
+                .distributive_run_if(
+                    in_state(GameState::Next).and_then(any_with_component::<Player>),
+                ),
+        );
     }
 }
 
@@ -48,7 +60,7 @@ pub struct EnemyBundle {
     sprite_bundle: SpriteBundle,
     texture_atlas: TextureAtlas,
     sprite_sheet_animation: SpritesheetAnimation,
-    collider: Collider,
+    // collider: Collider,
 }
 
 impl EnemyBundle {
@@ -57,8 +69,8 @@ impl EnemyBundle {
         speed: f32,
         health: i32,
         spawn_point: Vec3,
-        monsters_handles: Res<GameAssetsHandles>,
-        animations: Res<AnimationLibrary>,
+        monsters_handles: &GameAssetsHandles,
+        animations: &AnimationLibrary,
     ) -> Option<Self> {
         let texture_atlas_layout: &Handle<TextureAtlasLayout> =
             monsters_handles.get_field(&format!("{name}_layout"))?;
@@ -73,7 +85,7 @@ impl EnemyBundle {
                 ..Default::default()
             },
             texture_atlas: TextureAtlas::from(texture_atlas_layout.clone()),
-            collider: Collider::rectangle(10.0, 10.0),
+            // collider: Collider::rectangle(10.0, 10.0),
             sprite_sheet_animation: SpritesheetAnimation::from_id(
                 animations.animation_with_name(format!("{name}_walk"))?,
             ),
@@ -85,6 +97,25 @@ impl EnemyBundle {
 pub struct EnemyKilled {
     pub entity: Entity,
     pub place: Vec3,
+}
+
+fn add_colliders_to_close_enemies(
+    mut commands: Commands,
+    close_enemies: Res<KDTree2<NearestNeighbour>>,
+    enemies_without_collider: Query<Entity, (With<Enemy>, Without<Collider>, Without<Dying>)>,
+    player: Query<&GlobalTransform, With<Player>>,
+) {
+    let player = player.single();
+    let close_enemies = close_enemies.within_distance(player.translation().truncate(), 200.0);
+    for (_, enemy) in &close_enemies {
+        if let Some(enemy) = enemy {
+            if let Ok(enemy) = enemies_without_collider.get(*enemy) {
+                commands
+                    .entity(enemy)
+                    .insert(Collider::rectangle(15.0, 15.0));
+            }
+        }
+    }
 }
 
 #[derive(Debug, Component)]
@@ -207,11 +238,12 @@ fn spawn_enemy(
                     30.0,
                     40,
                     spawn_point.extend(0.0),
-                    monsters_handles,
-                    animations,
+                    &monsters_handles,
+                    &animations,
                 )
                 .unwrap(),
                 DotTimer(Timer::from_seconds(2.0, TimerMode::Repeating)),
+                NearestNeighbour,
             ))
             .observe(on_direction_changed);
     }
@@ -238,6 +270,9 @@ fn move_towards_player(
 #[derive(Component)]
 pub struct Dying;
 
+#[derive(Component, Default)]
+struct NearestNeighbour;
+
 fn on_dying(
     mut query: Query<(&mut SpritesheetAnimation, &Name), (Added<Dying>, With<Enemy>)>,
     animations: Res<AnimationLibrary>,
@@ -248,6 +283,20 @@ fn on_dying(
             .unwrap();
 
         sprite_animation.switch(death_animation);
+    }
+}
+
+fn kill_all_on_screen(
+    mut commands: Commands,
+    enemies: Query<Entity, (With<Enemy>, Without<Dying>)>,
+    input: Res<ButtonInput<KeyCode>>,
+) {
+    if input.just_pressed(KeyCode::Space) {
+        let enemies = enemies
+            .into_iter()
+            .map(|entity| (entity, Dying))
+            .collect::<Vec<_>>();
+        commands.insert_or_spawn_batch(enemies);
     }
 }
 

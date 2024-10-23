@@ -12,6 +12,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_screen_diagnostics::{ScreenDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin};
 use bevy_tweening::TweeningPlugin;
 use resources::ResourcePlugin;
 
@@ -48,6 +49,8 @@ impl Plugin for GamePlugin {
             PhysicsPlugins::default(),
             PhysicsDebugPlugin::default(),
             TweeningPlugin,
+            ScreenDiagnosticsPlugin::default(),
+            ScreenFrameDiagnosticsPlugin,
         ))
         .add_systems(Startup, setup);
     }

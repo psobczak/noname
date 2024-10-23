@@ -138,7 +138,6 @@ fn mark_resource_as_following(
     >,
 ) {
     for tween in &mut completed_tweens.read() {
-        info!("Tween completed: {:?}", tween.entity);
         if let Ok(tween) = resources.get(tween.entity) {
             commands.entity(tween).insert(FollowingPlayer);
         }
