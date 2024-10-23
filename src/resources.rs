@@ -18,6 +18,7 @@ use crate::{
     GameState,
 };
 
+const PICKUP_RANGE: f32 = 70.0;
 pub struct ResourcePlugin;
 
 impl Plugin for ResourcePlugin {
@@ -99,21 +100,22 @@ fn mark_resource_as_close(
         if resource_transofrm
             .translation
             .distance(player_transform.translation)
-            < 100.0
+            < PICKUP_RANGE
         {
             let tween_direction =
                 player_transform.looking_at(resource_transofrm.translation, Vec3::Y);
 
             let tween = Tween::new(
                 EaseFunction::BackIn,
-                Duration::from_millis(350),
+                Duration::from_millis(500),
                 TransformPositionLens {
                     start: resource_transofrm.translation,
                     end: tween_direction.translation,
                 },
             )
             .with_repeat_count(RepeatCount::Finite(1))
-            .with_repeat_strategy(RepeatStrategy::MirroredRepeat);
+            .with_repeat_strategy(RepeatStrategy::MirroredRepeat)
+            .with_completed_event(10);
 
             commands
                 .entity(resource)
@@ -136,8 +138,8 @@ fn mark_resource_as_following(
     >,
 ) {
     for tween in &mut completed_tweens.read() {
+        info!("Tween completed: {:?}", tween.entity);
         if let Ok(tween) = resources.get(tween.entity) {
-            commands.entity(tween).remove::<CloseToPlayer>();
             commands.entity(tween).insert(FollowingPlayer);
         }
     }
@@ -145,13 +147,13 @@ fn mark_resource_as_following(
 
 fn update_resource_position(
     player: Query<&GlobalTransform, With<Player>>,
-    mut resources: Query<&mut Transform, (With<Resource>, Added<FollowingPlayer>)>,
+    mut resources: Query<&mut Transform, (With<Resource>, With<FollowingPlayer>)>,
     time: Res<Time>,
 ) {
     let player_transform = player.single();
     for mut transform in &mut resources {
         let direction = transform.looking_at(player_transform.translation(), Vec3::Y);
-        transform.translation += direction.forward() * time.delta_seconds() * 50.0;
+        transform.translation += direction.forward() * time.delta_seconds() * 250.0;
     }
 }
 
@@ -257,7 +259,6 @@ fn on_enemy_killed(
         } = animation_event
         {
             let Ok(killed_enemy) = dying_enemies.get(*entity) else {
-                info!("Resturing earlt");
                 return;
             };
 
@@ -273,7 +274,7 @@ fn on_enemy_killed(
                     return error!("Failed to create resource bundle");
                 };
 
-                commands.spawn(bundle);
+                commands.spawn((bundle,));
             }
         }
     }

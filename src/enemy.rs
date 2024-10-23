@@ -20,7 +20,7 @@ pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(SpawnTimer(Timer::from_seconds(0.05, TimerMode::Repeating)))
+        app.insert_resource(SpawnTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
             .add_event::<EnemyKilled>()
             .add_systems(
                 Update,
