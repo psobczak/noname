@@ -36,12 +36,10 @@ impl Plugin for EnemyPlugin {
                 move_towards_player,
                 spawn_enemy,
                 enemy_direction_change,
-                // time_dot_damage,
                 on_dying,
                 on_death_animation_end,
                 add_colliders_to_close_enemies,
                 kill_all_on_screen,
-                // find_enemies_close_to_player,
             )
                 .distributive_run_if(
                     in_state(GameState::Next).and_then(any_with_component::<Player>),
@@ -59,7 +57,6 @@ pub struct EnemyBundle {
     sprite_bundle: SpriteBundle,
     texture_atlas: TextureAtlas,
     sprite_sheet_animation: SpritesheetAnimation,
-    // collider: Collider,
 }
 
 impl EnemyBundle {
@@ -84,7 +81,6 @@ impl EnemyBundle {
                 ..Default::default()
             },
             texture_atlas: TextureAtlas::from(texture_atlas_layout.clone()),
-            // collider: Collider::rectangle(10.0, 10.0),
             sprite_sheet_animation: SpritesheetAnimation::from_id(
                 animations.animation_with_name(format!("{name}_walk"))?,
             ),
@@ -230,7 +226,7 @@ fn spawn_enemy(
             .spawn((
                 EnemyBundle::new(
                     "monk",
-                    30.0,
+                    20.0,
                     40,
                     spawn_point.extend(0.0),
                     &monsters_handles,

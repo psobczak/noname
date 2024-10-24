@@ -1,6 +1,8 @@
+mod attack;
 mod movement;
 mod spawn;
 
+use attack::AttackPlugin;
 use movement::MovementPlugin;
 use spawn::SpawnPlugin;
 
@@ -12,7 +14,7 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((MovementPlugin, SpawnPlugin));
+        app.add_plugins((MovementPlugin, SpawnPlugin, AttackPlugin));
     }
 }
 
