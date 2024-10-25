@@ -1,13 +1,9 @@
-use avian2d::prelude::{Collider, CollidingEntities, Collision, CollisionStarted};
-use bevy::log::tracing_subscriber::fmt::writer;
-use bevy::utils::info;
+use avian2d::prelude::{Collider, CollisionStarted};
 use bevy::{math::VectorSpace, prelude::*};
-use bevy_spatial::kdtree::KDTree2;
-use bevy_spatial::{AutomaticUpdate, SpatialAccess, SpatialStructure};
 
 use crate::common::Health;
 use crate::{
-    enemy::{Dying, Enemy, NearestNeighbour},
+    enemy::{Dying, Enemy},
     GameState,
 };
 
@@ -24,7 +20,14 @@ impl Plugin for AttackPlugin {
             )
             .add_systems(
                 Update,
-                (rotate_orb, deal_damage_to_enemey).run_if(in_state(GameState::Next)),
+                (
+                    rotate_orb,
+                    deal_damage_to_enemey,
+                    insert_flash_duration_timer,
+                    change_color_to_red,
+                    change_color_to_normal,
+                )
+                    .run_if(in_state(GameState::Next)),
             )
             .add_systems(
                 Update,
@@ -53,7 +56,7 @@ fn spawn_orb(
             Name::from("Orb"),
             Weapon::Orb {
                 damage: 10,
-                rotation_speed: 5.0,
+                rotation_speed: 7.0,
             },
             ColorMesh2dBundle {
                 transform: Transform::from_xyz(
@@ -61,10 +64,10 @@ fn spawn_orb(
                     player_translation.y,
                     player_translation.z,
                 ),
-                mesh: meshes.add(Circle::new(5.0)).into(),
+                mesh: meshes.add(Circle::new(10.0)).into(),
                 ..Default::default()
             },
-            Collider::circle(5.0),
+            Collider::circle(10.0),
         ));
     });
 }
@@ -123,6 +126,52 @@ fn detect_collision_with_enemy(
                 }
             }
             _ => {}
+        }
+    }
+}
+
+#[derive(Component, Deref, DerefMut)]
+struct FlashDurationTimer(Timer);
+
+#[derive(Component)]
+struct OldColor(Color);
+
+fn insert_flash_duration_timer(mut commands: Commands, mut reader: EventReader<EnemyHit>) {
+    for event in reader.read() {
+        commands
+            .entity(event.enemy)
+            .insert(FlashDurationTimer(Timer::from_seconds(
+                0.1,
+                TimerMode::Once,
+            )));
+    }
+}
+
+fn change_color_to_red(
+    mut commands: Commands,
+    mut enemies: Query<(Entity, &mut Sprite), Added<FlashDurationTimer>>,
+) {
+    for (enemy, mut sprite) in &mut enemies {
+        let old_color = OldColor(sprite.color);
+        sprite.color = LinearRgba::RED.into();
+        commands.entity(enemy).insert(old_color);
+    }
+}
+
+fn change_color_to_normal(
+    mut commands: Commands,
+    mut enemies: Query<(Entity, &mut FlashDurationTimer, &mut Sprite, &OldColor), (With<Enemy>,)>,
+    time: Res<Time>,
+) {
+    for (enemy, mut timer, mut sprite, old_color) in &mut enemies {
+        timer.tick(time.delta());
+
+        if timer.just_finished() {
+            sprite.color = old_color.0;
+            commands
+                .entity(enemy)
+                .remove::<FlashDurationTimer>()
+                .remove::<OldColor>();
         }
     }
 }
