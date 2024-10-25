@@ -64,5 +64,5 @@ pub enum GameState {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn((Name::from("Camera"), Camera2dBundle::default()));
 }

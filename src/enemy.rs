@@ -63,7 +63,7 @@ impl EnemyBundle {
     fn new(
         name: &str,
         speed: f32,
-        health: i32,
+        health: u32,
         spawn_point: Vec3,
         monsters_handles: &GameAssetsHandles,
         animations: &AnimationLibrary,
@@ -102,7 +102,7 @@ fn add_colliders_to_close_enemies(
             if let Ok(enemy) = enemies_without_collider.get(*enemy) {
                 commands
                     .entity(enemy)
-                    .insert(Collider::rectangle(15.0, 15.0));
+                    .insert(Collider::rectangle(15.0, 45.0));
             }
         }
     }
@@ -263,7 +263,7 @@ fn move_towards_player(
 pub struct Dying;
 
 #[derive(Component, Default)]
-struct NearestNeighbour;
+pub struct NearestNeighbour;
 
 #[allow(clippy::type_complexity)]
 fn on_dying(
