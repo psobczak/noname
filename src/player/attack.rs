@@ -1,13 +1,10 @@
-use avian2d::prelude::{Collider, CollidingEntities, Collision, CollisionStarted};
-use bevy::log::tracing_subscriber::fmt::writer;
-use bevy::utils::info;
+use avian2d::prelude::{Collider, CollisionStarted};
 use bevy::{math::VectorSpace, prelude::*};
-use bevy_spatial::kdtree::KDTree2;
-use bevy_spatial::{AutomaticUpdate, SpatialAccess, SpatialStructure};
 
 use crate::common::Health;
+use crate::enemy::FlashOnHitMaterial;
 use crate::{
-    enemy::{Dying, Enemy, NearestNeighbour},
+    enemy::{Dying, Enemy},
     GameState,
 };
 
@@ -24,7 +21,8 @@ impl Plugin for AttackPlugin {
             )
             .add_systems(
                 Update,
-                (rotate_orb, deal_damage_to_enemey).run_if(in_state(GameState::Next)),
+                (update_shader, rotate_orb, deal_damage_to_enemey)
+                    .run_if(in_state(GameState::Next)),
             )
             .add_systems(
                 Update,
@@ -123,6 +121,24 @@ fn detect_collision_with_enemy(
                 }
             }
             _ => {}
+        }
+    }
+}
+
+fn update_shader(
+    mut reader: EventReader<EnemyHit>,
+    enemies: Query<&Handle<FlashOnHitMaterial>, With<Enemy>>,
+    mut materials: ResMut<Assets<FlashOnHitMaterial>>,
+) {
+    for event in reader.read() {
+        if let Ok(enemy) = enemies.get(event.enemy) {
+            if let Some(material) = materials.get_mut(enemy) {
+                match material.is_attacked {
+                    1 => material.is_attacked = 0,
+                    0 => material.is_attacked = 1,
+                    _ => {}
+                }
+            }
         }
     }
 }

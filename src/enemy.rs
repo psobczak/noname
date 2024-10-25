@@ -1,7 +1,13 @@
 use std::time::Duration;
 
 use avian2d::collision::Collider;
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::{
+    prelude::*,
+    render::render_resource::{AsBindGroup, ShaderRef},
+    sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle},
+    window::PrimaryWindow,
+};
+
 use bevy_spatial::{kdtree::KDTree2, AutomaticUpdate, SpatialAccess, SpatialStructure};
 use bevy_spritesheet_animation::{
     events::AnimationEvent, library::AnimationLibrary, prelude::SpritesheetAnimation,
@@ -27,9 +33,10 @@ impl Plugin for EnemyPlugin {
             Duration::from_millis(50),
             TimerMode::Repeating,
         )))
-        .add_plugins(
+        .add_plugins((
             AutomaticUpdate::<NearestNeighbour>::new().with_spatial_ds(SpatialStructure::KDTree2),
-        )
+            Material2dPlugin::<FlashOnHitMaterial>::default(),
+        ))
         .add_systems(
             Update,
             (
@@ -48,15 +55,32 @@ impl Plugin for EnemyPlugin {
     }
 }
 
-#[derive(Bundle, Debug)]
+#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
+pub struct FlashOnHitMaterial {
+    #[uniform(0)]
+    on_hit_color: LinearRgba,
+    #[texture(1)]
+    #[sampler(2)]
+    texture: Handle<Image>,
+    #[uniform(3)]
+    pub is_attacked: u32,
+}
+
+impl Material2d for FlashOnHitMaterial {
+    fn fragment_shader() -> ShaderRef {
+        "shaders/flash_on_hit.wgsl".into()
+    }
+}
+
+#[derive(Bundle)]
 pub struct EnemyBundle {
     name: Name,
     enemy: Enemy,
     speed: Speed,
     health: Health,
-    sprite_bundle: SpriteBundle,
     texture_atlas: TextureAtlas,
     sprite_sheet_animation: SpritesheetAnimation,
+    flash_on_hit_material: MaterialMesh2dBundle<FlashOnHitMaterial>,
 }
 
 impl EnemyBundle {
@@ -67,23 +91,32 @@ impl EnemyBundle {
         spawn_point: Vec3,
         monsters_handles: &GameAssetsHandles,
         animations: &AnimationLibrary,
+        materials: &mut Assets<FlashOnHitMaterial>,
+        meshes: &mut Assets<Mesh>,
     ) -> Option<Self> {
         let texture_atlas_layout: &Handle<TextureAtlasLayout> =
             monsters_handles.get_field(&format!("{name}_layout"))?;
+        let texture_handle = monsters_handles.get_monster_sheet_handle(name)?;
+
         Some(Self {
             name: Name::from(name),
             speed: Speed(speed),
             health: Health(health),
             enemy: Enemy,
-            sprite_bundle: SpriteBundle {
-                texture: monsters_handles.get_monster_sheet_handle(name)?.clone(),
-                transform: Transform::from_translation(spawn_point),
-                ..Default::default()
-            },
             texture_atlas: TextureAtlas::from(texture_atlas_layout.clone()),
             sprite_sheet_animation: SpritesheetAnimation::from_id(
                 animations.animation_with_name(format!("{name}_walk"))?,
             ),
+            flash_on_hit_material: MaterialMesh2dBundle {
+                mesh: meshes.add(Rectangle::new(100.0, 100.0)).into(),
+                material: materials.add(FlashOnHitMaterial {
+                    is_attacked: 0,
+                    on_hit_color: LinearRgba::RED,
+                    texture: texture_handle.clone(),
+                }),
+                transform: Transform::from_translation(spawn_point),
+                ..Default::default()
+            },
         })
     }
 }
@@ -178,16 +211,16 @@ fn enemy_direction_change(
     }
 }
 
-fn on_direction_changed(
-    trigger: Trigger<SpriteDirection>,
-    mut sprites: Query<&mut Sprite, With<Enemy>>,
-) {
-    let mut sprite = sprites.get_mut(trigger.entity()).unwrap();
-    match trigger.event() {
-        SpriteDirection::Left => sprite.flip_x = true,
-        SpriteDirection::Right => sprite.flip_x = false,
-    }
-}
+// fn on_direction_changed(
+//     trigger: Trigger<SpriteDirection>,
+//     mut sprites: Query<&mut Sprite, With<Enemy>>,
+// ) {
+//     let mut sprite = sprites.get_mut(trigger.entity()).unwrap();
+//     match trigger.event() {
+//         SpriteDirection::Left => sprite.flip_x = true,
+//         SpriteDirection::Right => sprite.flip_x = false,
+//     }
+// }
 
 fn spawn_enemy(
     window: Query<&Window, With<PrimaryWindow>>,
@@ -197,6 +230,8 @@ fn spawn_enemy(
     mut commands: Commands,
     monsters_handles: Res<GameAssetsHandles>,
     animations: Res<AnimationLibrary>,
+    mut materials: ResMut<Assets<FlashOnHitMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
 ) {
     timer.0.tick(time.delta());
 
@@ -222,21 +257,26 @@ fn spawn_enemy(
             _ => unreachable!("This should never happen"),
         };
 
-        commands
-            .spawn((
-                EnemyBundle::new(
-                    "monk",
-                    20.0,
-                    40,
-                    spawn_point.extend(0.0),
-                    &monsters_handles,
-                    &animations,
-                )
-                .unwrap(),
-                DotTimer(Timer::from_seconds(2.0, TimerMode::Repeating)),
-                NearestNeighbour,
-            ))
-            .observe(on_direction_changed);
+        commands.spawn((
+            EnemyBundle::new(
+                "monk",
+                20.0,
+                40,
+                spawn_point.extend(0.0),
+                &monsters_handles,
+                &animations,
+                &mut materials,
+                &mut meshes,
+            )
+            .unwrap(),
+            DotTimer(Timer::from_seconds(2.0, TimerMode::Repeating)),
+            NearestNeighbour,
+            Sprite {
+                color: Color::WHITE,
+                ..Default::default()
+            },
+        ));
+        // .observe(on_direction_changed);
     }
 }
 
