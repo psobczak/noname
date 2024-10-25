@@ -11,6 +11,7 @@ use bevy::{
     diagnostic::FrameTimeDiagnosticsPlugin, input::common_conditions::input_toggle_active,
     prelude::*,
 };
+use bevy_hanabi::HanabiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_screen_diagnostics::{ScreenDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin};
 use bevy_tweening::TweeningPlugin;
@@ -51,6 +52,7 @@ impl Plugin for GamePlugin {
             TweeningPlugin,
             ScreenDiagnosticsPlugin::default(),
             ScreenFrameDiagnosticsPlugin,
+            HanabiPlugin,
         ))
         .add_systems(Startup, setup);
     }
